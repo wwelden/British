@@ -1,0 +1,21 @@
+--Case Name: ComplexCalc
+--Author: Your Name
+--Output:
+-- 8
+-- 2.5
+-- 0 (for the ifz operation)
+-- -3
+--End Output:
+
+-- Simple addition and subtraction
+4+4
+5-2.5
+
+-- A complex expression with multiple operations
+(3*2) + (12/4) - 1
+
+-- Using ifz with a true condition (0 as the condition)
+ifz 0 then 0 else 5
+
+-- A negative result from subtraction
+5-8
