@@ -1,0 +1,3 @@
+noble Test { serfs x innit decree getvalue (Y) is oneself.x innit } innit
+hearye OBJ is a Test(42) innit
+OBJ.getvalue(OBJ) innit

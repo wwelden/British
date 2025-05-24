@@ -14,13 +14,17 @@ module Evaluator where
                | UnitVal
                | TupVal Value Value
                | FuncVal Env Var Expr
+               | ObjectVal ClassName [(FieldName, Value)] [(MethodName, Var, Expr)]
                deriving (Show, Eq)
-    -- doubles not Doubles/ error not a val/ add negation 
+    -- doubles not Doubles/ error not a val/ add negation
 
     type Loc = Int
     type Env = [(Var, Value)]
     type Store = [(Loc, Value)]
-    data Context = Context {env :: Env, store :: Store} deriving (Eq, Show)
+    type ClassEnv = [(ClassName, ClassDef)]
+    data ClassDef = ClassDef [FieldName] [(MethodName, Var, Expr)]
+                    deriving (Show, Eq)
+    data Context = Context {env :: Env, store :: Store, classes :: ClassEnv} deriving (Eq, Show)
 
     lookupEnv :: Var -> Env -> Maybe Value
     lookupEnv = lookup
@@ -28,6 +32,23 @@ module Evaluator where
     updateEnv :: Var -> Value -> Env -> Env
     updateEnv x v env = filter (\(key, _) -> key /= x) env ++ [(x, v)]
     -- remove any pairs with x as a key
+
+    lookupClass :: ClassName -> ClassEnv -> Maybe ClassDef
+    lookupClass = lookup
+
+    updateClasses :: ClassName -> ClassDef -> ClassEnv -> ClassEnv
+    updateClasses cn cd cenv = filter (\(key, _) -> key /= cn) cenv ++ [(cn, cd)]
+
+    lookupField :: FieldName -> [(FieldName, Value)] -> Maybe Value
+    lookupField = lookup
+
+    updateField :: FieldName -> Value -> [(FieldName, Value)] -> [(FieldName, Value)]
+    updateField fn v fields = filter (\(key, _) -> key /= fn) fields ++ [(fn, v)]
+
+    lookupMethod :: MethodName -> [(MethodName, Var, Expr)] -> Maybe (Var, Expr)
+    lookupMethod mn methods = case lookup mn [(mn', (var, expr)) | (mn', var, expr) <- methods] of
+                                Just (var, expr) -> Just (var, expr)
+                                Nothing -> Nothing
 
     -- make a function to evaluate an expression
 
@@ -123,6 +144,12 @@ module Evaluator where
             recEnv = updateEnv var lazyVal (env ctx)
             (lazyVal,st) = fromMaybe defaultValue (eval ctx {env = recEnv} e)
         in Just (ctx{store = st, env = recEnv}, UnitVal)
+    evalDec ctx (ClassDec className members) =
+        let fields = [fname | FieldDecl fname <- members]
+            methods = [(mname, var, expr) | MethodDecl mname var expr <- members]
+            classDef = ClassDef fields methods
+            newClasses = updateClasses className classDef (classes ctx)
+        in Just (ctx{classes = newClasses}, UnitVal)
 
 
 
@@ -206,7 +233,7 @@ module Evaluator where
             case funcVal of
                 FuncVal ctx2 var body -> eval ctx{store = st, env = updateEnv var argVal ctx2} body
                 _ -> Nothing
-    eval ctx (AssignExpr e1 e2) = 
+    eval ctx (AssignExpr e1 e2) =
         case eval ctx e1 of
             Just (FuncVal ctx2 var body, st) ->
                 do  (val,st2) <- eval ctx{store = st} e2
@@ -216,24 +243,60 @@ module Evaluator where
                     Just (val,st2) -> Just (val, st2)
                     _ -> Nothing
             _ -> Nothing
-    eval ctx (SeqExpr e1 e2) = 
+    eval ctx (SeqExpr e1 e2) =
         case eval ctx e1 of
             Just (_,st) -> eval ctx{store = st} e2
             _ -> Nothing
-    eval ctx (RefExpr e) = 
+    eval ctx (RefExpr e) =
         case eval ctx e of
             Just (val,st) -> Just (IntVal (length (store ctx)), (length (store ctx), val):st)
             _ -> Nothing
-    eval ctx (WhilstExpr e1 e2) = 
+    eval ctx (WhilstExpr e1 e2) =
         case eval ctx e1 of
-            Just (BoolVal True, st) -> 
+            Just (BoolVal True, st) ->
                 case eval ctx{store = st} e2 of
                     Just (val,st2) -> eval ctx{store = st2} (WhilstExpr e1 e2)
                     _ -> Nothing
             Just (BoolVal False, st) -> Just (UnitVal, st)
             _ -> Nothing
+    eval ctx (NewExpr className args) =
+        case lookupClass className (classes ctx) of
+            Just (ClassDef fields methods) ->
+                do  (argVals, st) <- evalExprList ctx args
+                    let fieldValues = zip fields argVals
+                    Just (ObjectVal className fieldValues methods, st)
+            Nothing -> Nothing
+    eval ctx (MethodCallExpr objExpr methodName argExpr) =
+        do  (objVal, st) <- eval ctx objExpr
+            (argVal, st2) <- eval ctx{store = st} argExpr
+            case objVal of
+                ObjectVal _ _ methods ->
+                    case lookupMethod methodName methods of
+                        Just (param, body) ->
+                            let newEnv = updateEnv param argVal (updateEnv "oneself" objVal (env ctx))
+                            in eval ctx{store = st2, env = newEnv} body
+                        Nothing -> Nothing
+                _ -> Nothing
+    eval ctx (FieldAccessExpr objExpr fieldName) =
+        do  (objVal, st) <- eval ctx objExpr
+            case objVal of
+                ObjectVal _ fields _ ->
+                    case lookupField fieldName fields of
+                        Just val -> Just (val, st)
+                        Nothing -> Nothing
+                _ -> Nothing
+    eval ctx OneselfExpr =
+        do  val <- lookupEnv "oneself" (env ctx)
+            Just (val, store ctx)
 
 
+
+    evalExprList :: Context -> [Expr] -> Maybe ([Value], Store)
+    evalExprList ctx [] = Just ([], store ctx)
+    evalExprList ctx (e:es) =
+        do  (val, st) <- eval ctx e
+            (vals, st2) <- evalExprList ctx{store = st} es
+            Just (val:vals, st2)
 
     -- eval env expr = traceShow expr undefined
 
@@ -245,6 +308,7 @@ module Evaluator where
     showVal UnitVal = "#"
     showVal (TupVal v1 v2) = "/" ++ showVal v1 ++ ", " ++ showVal v2 ++ "\\"
     showVal (FuncVal _ var _) = "func " ++ var
+    showVal (ObjectVal className _ _) = "object " ++ className
 
     threadStore :: (Value -> Maybe Value) -> Context -> Expr -> Maybe (Value, Store)
     threadStore f ctx a =
@@ -258,4 +322,3 @@ module Evaluator where
            fr <- f av bv
            Just (fr, st2)
     -- updateMap :: [(a,b)] -> a -> b -> Maybe [(a,b)]
-    

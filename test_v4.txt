@@ -1,0 +1,20 @@
+# British v4 Class Examples
+
+## Basic Class Definition
+noble Stack {
+    serfs val innit
+    decree empty (oneself) is oneself.val = # innit
+    decree add (x) is oneself.val = x innit
+    decree peek (oneself) is oneself.val innit
+}
+
+## Object Creation and Method Calls
+hearye mystack is a Stack(42) innit
+mystack.peek(mystack) innit
+mystack.add(100) innit
+mystack.peek(mystack) innit
+
+## Simple expressions still work
+2 + 3 innit
+ace /\ rank innit
+supposing ace hence 42 otherwise 0 innit

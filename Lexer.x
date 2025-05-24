@@ -34,7 +34,6 @@ $digit+                                 { IntTok .read }
 "sqrt"                                  { const SqrtTok }
 "ace"                                   { const AceTok }
 "rank"                                  { const RankTok }
-[A-Z_]+                                 { VarTok }
 "ifZ"                                   { const IfzTok }
 "supposing"                             { const SupposingTok }
 "hence"                                 { const HenceTok }
@@ -60,9 +59,6 @@ $digit+                                 { IntTok .read }
 "doeth"                                 { const DoethTok }
 "|"                                     { const PipeTok }
 "~"                                     { const TildeTok }
-
-[A-Z]([a-Z_])*                          { CnameTok }
-[a-z]([a-z_])*                          { FnameTok }
 "noble"                                 { const NobleTok }
 "serfs"                                 { const SerfsTok }
 "decree"                                { const DecreeTok }
@@ -72,6 +68,10 @@ $digit+                                 { IntTok .read }
 "."                                     { const DotTok }
 "{"                                     { const LBraceTok }
 "}"                                     { const RBraceTok }
+
+[A-Z][a-z]([a-zA-Z_])*                  { CnameTok }
+[a-z]([a-z_])*                          { FnameTok }
+[A-Z_]+                                 { VarTok }
 
 
 \`\`[^\`]*\`\`                          { StringTok }
@@ -98,7 +98,7 @@ data Token = PlusTok | MinusTok | MultTok | DivTok | ExpTok | ModTok | SqrtTok
               | ColonizeTok | CheersTok | MateTok | BlokeTok
               | CommaTok | UnitTok | ArrowTok | BackslashTok
               | DisplayTok | EqEqTok | WhilstTok | DoethTok | PipeTok | TildeTok
-              | ATok | DotTok | LBraceTok | RBraceTok | CNameTok String | FNameTok String
+              | ATok | DotTok | LBraceTok | RBraceTok | CnameTok String | FnameTok String
               | NobleTok | SerfsTok | DecreeTok | ObeysTok | OneselfTok
               deriving (Show, Eq, Ord)
 

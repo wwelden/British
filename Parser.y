@@ -85,11 +85,11 @@ import Data.Maybe
 %nonassoc for otherwise '=>' whilst display doeth
 %right '\\/'
 %right '/\\'
-%nonassoc '=' '>' '<' leq geq 
-%left '|' '~' 
+%nonassoc '=' '>' '<' leq geq
+%left '|' '~'
 %left '=='
-%right ';' 
-%left '+' '-' 
+%right ';'
+%left '+' '-'
 %left '*' '/'
 %left '%'
 %right '^'
@@ -99,13 +99,20 @@ import Data.Maybe
 
 %%
 Dec: Expr innit                   {ExprDec $1}
-    | hearye var is Expr innit    {HearyeDec $2 $4}   
+    | hearye var is Expr innit    {HearyeDec $2 $4}
     | colonize var is Expr innit  {ColonizeDec $2 $4}
+    | noble cname '{' ClassMembers '}' innit {ClassDec $2 $4}
 
 ExprList : {- empty -}                   { [] }
     | Expr                                              {[$1]}
-    | Expr and ExprList                  { $1 : $3 }
-    
+    | Expr ',' ExprList                  { $1 : $3 }
+
+ClassMembers : {- empty -}               { [] }
+    | ClassMember ClassMembers           { $1 : $2 }
+
+ClassMember : serfs fname innit          { FieldDecl $2 }
+    | decree fname '(' var ')' is Expr innit { MethodDecl $2 $4 $7 }
+
 
 
 Expr: int                         { IntExpr $1 }
@@ -149,18 +156,30 @@ Expr: int                         { IntExpr $1 }
     | Expr '==' Expr              { AssignExpr $1 $3 }
     | '|' Expr '|'               { DerefExpr $2 }
     | Expr '~' Expr               { SeqExpr $1 $3 }
+    | a cname '(' ExprList ')'    { NewExpr $2 $4 }
+    | Expr '.' fname '(' Expr ')' { MethodCallExpr $1 $3 $5 }
+    | Expr '.' fname              { FieldAccessExpr $1 $3 }
+    | oneself                     { OneselfExpr }
 
 
 
 {
 
 type Var = String
+type ClassName = String
+type FieldName = String
+type MethodName = String
+
+data ClassMember = FieldDecl FieldName
+                 | MethodDecl MethodName Var Expr
+                 deriving (Show, Eq)
 
 
 
 data Dec = ExprDec Expr
     | HearyeDec Var Expr
     | ColonizeDec Var Expr
+    | ClassDec ClassName [ClassMember]
     deriving (Show, Eq)
 
 data Expr = IntExpr Int
@@ -182,7 +201,7 @@ data Expr = IntExpr Int
     | MateExpr Expr
     | BlokeExpr Expr
     | TupleExpr Expr Expr
-    | UnitExpr 
+    | UnitExpr
     | FuncExpr Var Expr
     | ApplyExpr Expr Expr
     | WhilstExpr Expr Expr
@@ -190,6 +209,10 @@ data Expr = IntExpr Int
     | AssignExpr Expr Expr
     | DerefExpr Expr
     | SeqExpr Expr Expr
+    | NewExpr ClassName [Expr]
+    | MethodCallExpr Expr MethodName Expr
+    | FieldAccessExpr Expr FieldName
+    | OneselfExpr
     deriving (Show, Eq)
 
 data BOp = PlusOp

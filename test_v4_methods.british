@@ -1,0 +1,5 @@
+noble Counter { serfs count innit decree increment (X) is oneself.count = oneself.count + 1 innit decree get (X) is oneself.count innit } innit
+hearye MYCOUNTER is a Counter(0) innit
+MYCOUNTER.get(MYCOUNTER) innit
+MYCOUNTER.increment(MYCOUNTER) innit
+MYCOUNTER.get(MYCOUNTER) innit
